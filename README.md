@@ -25,3 +25,5 @@ then run : k6 run generate_api_load_test.js
 ## I have put postman collection for API test inside BackendAPI-Test directory
 
 ### To run the automation api test just import the collection into your postman then send request it will run all the cases one after one
+
+**** I have used AI here to reduce repetitive task and took suggestion how to optimzed and standardized code structure****
