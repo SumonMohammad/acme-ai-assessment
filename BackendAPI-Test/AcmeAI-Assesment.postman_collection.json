@@ -1,0 +1,268 @@
+{
+  "info": {
+    "_postman_id": "bbc63595-4a77-4128-a57e-fe12b12497e9",
+    "name": "AcmeAI-Assesment",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "31520684"
+  },
+  "item": [
+    {
+      "name": "generateLegalContent",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "let scenarios = JSON.parse(pm.collectionVariables.get(\"scenarios\"));\r",
+              "let index = parseInt(pm.collectionVariables.get(\"index\") || 0);\r",
+              "\r",
+              "let current = scenarios[index];\r",
+              "\r",
+              "pm.variables.set(\"requestBody\", JSON.stringify(current.body));\r",
+              "\r",
+              "\r",
+              "pm.variables.set(\"expectedHttpStatus\", current.expectedHttpStatus);\r",
+              "pm.variables.set(\"expectedBodyStatus\", current.expectedBodyStatus);\r",
+              "\r",
+              "if (!current.expectedBodyStatus) {\r",
+              "    pm.variables.set(\"expectedBodyStatus\", current.expectedHttpStatus);\r",
+              "}\r",
+              "\r",
+              "// Set meta info\r",
+              "pm.variables.set(\"scenarioType\", current.type);\r",
+              "pm.variables.set(\"scenarioName\", current.name);\r",
+              "\r",
+              "console.log(\"Running Scenario:\", current.name);\r",
+              "console.log(\"Expected HTTP:\", current.expectedHttpStatus);\r",
+              "console.log(\"Expected Body Status:\", current.expectedBodyStatus);\r",
+              "\r",
+              "// Increment index safely\r",
+              "index++;\r",
+              "\r",
+              "if (index < scenarios.length) {\r",
+              "    pm.collectionVariables.set(\"index\", index);\r",
+              "} else {\r",
+              "    pm.collectionVariables.set(\"index\", 0);\r",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "let res = pm.response.json();\r",
+              "let expectedHttpStatus = parseInt(pm.variables.get(\"expectedHttpStatus\"));\r",
+              "let expectedBodyStatus = parseInt(pm.variables.get(\"expectedBodyStatus\"));\r",
+              "let scenarioType = pm.variables.get(\"scenarioType\");\r",
+              "let scenarioName = pm.variables.get(\"scenarioName\");\r",
+              "\r",
+              "pm.test(\"HTTP Status Validation - \" + scenarioName, function () {\r",
+              "    pm.response.to.have.status(expectedHttpStatus);\r",
+              "});\r",
+              "\r",
+              "if (scenarioType === \"validation\") {\r",
+              "\r",
+              "    pm.test(\"Validation Error Structure\", function () {\r",
+              "        pm.expect(res).to.have.property(\"detail\");\r",
+              "        pm.expect(res.detail).to.be.an(\"array\");\r",
+              "        pm.expect(res.detail[0]).to.have.property(\"msg\");\r",
+              "    });\r",
+              "\r",
+              "} else {\r",
+              "    pm.test(\"Body Status Field Validation - \" + scenarioName, function () {\r",
+              "        pm.expect(res.status).to.eql(expectedBodyStatus);\r",
+              "    });\r",
+              "}\r",
+              "\r",
+              "\r",
+              "pm.test(\"Response Time < 1000ms\", function () {\r",
+              "    pm.expect(pm.response.responseTime).to.be.below(1000);\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Content-Type JSON\", function () {\r",
+              "    pm.expect(pm.response.headers.get(\"Content-Type\"))\r",
+              "        .to.include(\"application/json\");\r",
+              "});\r",
+              "\r",
+              "if (res.status === 200 && res.success === true) {\r",
+              "\r",
+              "    const successSchema = {\r",
+              "        type: \"object\",\r",
+              "        required: [\"data\", \"message\", \"success\", \"status\"],\r",
+              "        properties: {\r",
+              "            success: { type: \"boolean\" },\r",
+              "            status: { type: \"number\" },\r",
+              "            message: { type: \"string\" },\r",
+              "            data: {\r",
+              "                type: \"object\",\r",
+              "                required: [\"summary\", \"matched_docs\"],\r",
+              "                properties: {\r",
+              "                    summary: { type: \"string\", minLength: 1 },\r",
+              "                    matched_docs: {\r",
+              "                        type: \"array\",\r",
+              "                        items: {\r",
+              "                            type: \"object\",\r",
+              "                            required: [\"id\", \"title\", \"content\"],\r",
+              "                            properties: {\r",
+              "                                id: { type: \"number\" },\r",
+              "                                title: { type: \"string\", minLength: 1 },\r",
+              "                                content: { type: \"string\", minLength: 1 }\r",
+              "                            },\r",
+              "                            additionalProperties: false\r",
+              "                        }\r",
+              "                    }\r",
+              "                },\r",
+              "                additionalProperties: false\r",
+              "            }\r",
+              "        },\r",
+              "        additionalProperties: false\r",
+              "    };\r",
+              "\r",
+              "    pm.test(\"Business Success Schema Validation\", function () {\r",
+              "        pm.response.to.have.jsonSchema(successSchema);\r",
+              "    });\r",
+              "\r",
+              "    if (scenarioType === \"match\") {\r",
+              "        pm.test(\"Matched docs should not be empty\", function () {\r",
+              "            pm.expect(res.data.matched_docs.length).to.be.above(0);\r",
+              "        });\r",
+              "    }\r",
+              "\r",
+              "    if (scenarioType === \"no_match\") {\r",
+              "        pm.test(\"Matched docs should be empty\", function () {\r",
+              "            pm.expect(res.data.matched_docs.length).to.eql(0);\r",
+              "        });\r",
+              "    }\r",
+              "}\r",
+              "\r",
+              "if (res.status === 400 && res.success === false) {\r",
+              "\r",
+              "    const errorSchema = {\r",
+              "        type: \"object\",\r",
+              "        required: [\"error\", \"success\", \"status\"],\r",
+              "        properties: {\r",
+              "            error: { type: \"string\" },\r",
+              "            success: { type: \"boolean\" },\r",
+              "            status: { type: \"number\" }\r",
+              "        },\r",
+              "        additionalProperties: false\r",
+              "    };\r",
+              "\r",
+              "    pm.test(\"Business Error Schema Validation\", function () {\r",
+              "        pm.response.to.have.jsonSchema(errorSchema);\r",
+              "    });\r",
+              "}\r",
+              "\r",
+              "if (pm.response.code === 422) {\r",
+              "\r",
+              "    const schema422 = {\r",
+              "        type: \"object\",\r",
+              "        required: [\"detail\"],\r",
+              "        properties: {\r",
+              "            detail: {\r",
+              "                type: \"array\",\r",
+              "                items: {\r",
+              "                    type: \"object\",\r",
+              "                    required: [\"type\", \"loc\", \"msg\"]\r",
+              "                }\r",
+              "            }\r",
+              "        }\r",
+              "    };\r",
+              "\r",
+              "    pm.test(\"422 Schema Validation\", function () {\r",
+              "        pm.response.to.have.jsonSchema(schema422);\r",
+              "    });\r",
+              "}\r",
+              "pm.test(\"API Contract Violation Check\", function () {\r",
+              "\r",
+              "    if (res.status && pm.response.code !== res.status) {\r",
+              "        console.warn(\"Contract violation: HTTP and body status mismatch\");\r",
+              "    }\r",
+              "\r",
+              "});\r",
+              "\r",
+              "\r",
+              "\r",
+              "\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{{requestBody}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseURL}}/generate",
+          "host": [
+            "{{baseURL}}"
+          ],
+          "path": [
+            "generate"
+          ]
+        },
+        "description": "Generated from cURL: curl --location 'http://localhost:8000/generate' \\\r\n--header 'Content-Type: application/json' \\\r\n--data '{\r\n    \"query\": \"Data Protection and Privacy Act\"\r\n}'"
+      },
+      "response": []
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "scenarios",
+      "value": ""
+    },
+    {
+      "key": "index",
+      "value": ""
+    },
+    {
+      "key": "baseURL",
+      "value": ""
+    }
+  ]
+}
